@@ -19,7 +19,9 @@
             set -euo pipefail
             cutoff=$(date -u -d '1 minute ago' +%s)
             echo "Fetching events for user: ${GH_USER}"
-            events=$(curl -v -H "Accept: application/vnd.github+json" --url "https://api.github.com/users/${GH_USER}/events/public?per_page=100")
+            target_url="https://api.github.com/users/${GH_USER}/events/public"
+            events=$(curl -sSf -H "Accept: application/vnd.github+json" -G -d "per_page=100" "$target_url")
+            echo "Events fetched, length: ${#events}"
             cnt=$(echo "$events" | jq --argjson cutoff "$cutoff" '[.[] | select(.type=="PushEvent") | .created_at | fromdateiso8601 | select(. > $cutoff)] | length')
 
             if [ "$cnt" -eq 0 ]; then
