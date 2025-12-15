@@ -2,8 +2,6 @@
   name: Weekly Push Check
 
   on:
-    push:
-      branches: [ main ]
     schedule:
       # 北京时间周日 08:00 = UTC 周日 00:00
       - cron: "0 0 * * 0"
@@ -20,9 +18,8 @@
           run: |
             set -euo pipefail
             cutoff=$(date -u -d '1 minute ago' +%s)
-            target_url="https://api.github.com/users/${GH_USER}/events/public?per_page=100"
-            echo "Debug: Fetching URL: $target_url"
-            events=$(curl -sSf -g -H 'Accept: application/vnd.github+json' "$target_url")
+            echo "Fetching events for user: ${GH_USER}"
+            events=$(curl -v -H "Accept: application/vnd.github+json" --url "https://api.github.com/users/${GH_USER}/events/public?per_page=100")
             cnt=$(echo "$events" | jq --argjson cutoff "$cutoff" '[.[] | select(.type=="PushEvent") | .created_at | fromdateiso8601 | select(. > $cutoff)] | length')
 
             if [ "$cnt" -eq 0 ]; then
