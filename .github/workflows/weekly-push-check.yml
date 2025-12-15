@@ -33,7 +33,7 @@
                exit 1
             fi
 
-            cutoff=$(date -u -d '1 minute ago' +%s)
+            cutoff=$(date -u -d '7 days ago' +%s)
             echo "Fetching events for user: ${GH_USER}"
             
             # 2. 获取 GitHub 事件
@@ -45,7 +45,7 @@
             echo "Debug: Found $cnt PushEvents in the last window."
 
             if [ "$cnt" -eq 0 ]; then
-              msg="提醒：GitHub 用户 ${GH_USER} 过去7天没有新的 push commit（北京时间周日08:00检查）。"
+              msg="提醒：GitHub 用户 ${GH_USER} 过去7天没有新的 push commit, 需要继续努力补足没提交的push了。"
               echo "Sending webhook notification..."
               # 4. 发送通知 (飞书格式)
               curl -sSf --url "$FEISHU_WEBHOOK" -H 'Content-Type: application/json' \
