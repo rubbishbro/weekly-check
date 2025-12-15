@@ -17,16 +17,33 @@
             WECOM_WEBHOOK: ${{ secrets.WECOM_WEBHOOK }}
           run: |
             set -euo pipefail
+
+            # 1. 检查 Webhook 变量是否存在及基本格式
+            if [ -z "${WECOM_WEBHOOK:-}" ]; then
+              echo "Error: WECOM_WEBHOOK secret is not set."
+              exit 1
+            fi
+            if [[ ! "$WECOM_WEBHOOK" =~ ^https:// ]]; then
+               echo "Error: WECOM_WEBHOOK does not start with 'https://'. Please check the secret value."
+               exit 1
+            fi
+
             cutoff=$(date -u -d '1 minute ago' +%s)
             echo "Fetching events for user: ${GH_USER}"
+            
+            # 2. 获取 GitHub 事件
             target_url="https://api.github.com/users/${GH_USER}/events/public"
             events=$(curl -sSf -H "Accept: application/vnd.github+json" -G -d "per_page=100" "$target_url")
-            echo "Events fetched, length: ${#events}"
+            
+            # 3. 计算 PushEvent 数量
             cnt=$(echo "$events" | jq --argjson cutoff "$cutoff" '[.[] | select(.type=="PushEvent") | .created_at | fromdateiso8601 | select(. > $cutoff)] | length')
+            echo "Debug: Found $cnt PushEvents in the last window."
 
             if [ "$cnt" -eq 0 ]; then
               msg="提醒：GitHub 用户 ${GH_USER} 过去7天没有新的 push commit（北京时间周日08:00检查）。"
-              curl -sSf "$WECOM_WEBHOOK" -H 'Content-Type: application/json' \
+              echo "Sending webhook notification..."
+              # 4. 发送通知 (使用 --url 明确参数)
+              curl -sSf --url "$WECOM_WEBHOOK" -H 'Content-Type: application/json' \
                 -d "$(jq -n --arg m "$msg" '{msgtype:"text",text:{content:$m}}')"
               echo "$msg"
             else
