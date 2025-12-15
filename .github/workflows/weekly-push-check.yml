@@ -19,7 +19,7 @@
             set -euo pipefail
             cutoff=$(date -u -d '1 minute ago' +%s)
             events="$(curl -sSf -H 'Accept: application/vnd.github+json' "https://api.github.com/users/${GH_USER}/events/public?per_page=100")"
-            cnt="$(echo "$events" | jq --argjson cutoff "$cutoff" '[.[] |select(.type=="PushEvent") | .created_at | fromdateiso8601 | select(. > $cutoff)]length')"
+            cnt="$(echo "$events" | jq --argjson cutoff "$cutoff" '[.[] | select(.type=="PushEvent") | .created_at | fromdateiso8601 | select(. > $cutoff)] | length')"
 
             if [ "$cnt" -eq 0 ]; then
               msg="提醒：GitHub 用户 ${GH_USER} 过去7天没有新的 push commit（北京时间周日08:00检查）。"
