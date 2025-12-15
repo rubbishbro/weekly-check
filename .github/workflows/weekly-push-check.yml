@@ -14,17 +14,22 @@
         - name: Check push events in last 7 days
           env:
             GH_USER: rubbishbro
-            WECOM_WEBHOOK: ${{ secrets.WECOM_WEBHOOK }}
+            FEISHU_WEBHOOK: ${{ secrets.FEISHU_WEBHOOK }}
           run: |
             set -euo pipefail
 
+            # 0. 清理 Webhook 变量 (去除可能存在的空白字符)
+            FEISHU_WEBHOOK=$(echo "${FEISHU_WEBHOOK:-}" | xargs)
+
             # 1. 检查 Webhook 变量是否存在及基本格式
-            if [ -z "${WECOM_WEBHOOK:-}" ]; then
-              echo "Error: WECOM_WEBHOOK secret is not set."
+            if [ -z "$FEISHU_WEBHOOK" ]; then
+              echo "Error: FEISHU_WEBHOOK secret is not set."
               exit 1
             fi
-            if [[ ! "$WECOM_WEBHOOK" =~ ^https:// ]]; then
-               echo "Error: WECOM_WEBHOOK does not start with 'https://'. Please check the secret value."
+            if [[ ! "$FEISHU_WEBHOOK" =~ ^https:// ]]; then
+               # 为了安全，只打印前4个字符用于调试
+               echo "Error: FEISHU_WEBHOOK does not start with 'https://'. It starts with '$(echo "$FEISHU_WEBHOOK" | cut -c1-4)...'"
+               echo "Please check the secret value in GitHub Settings."
                exit 1
             fi
 
@@ -42,9 +47,9 @@
             if [ "$cnt" -eq 0 ]; then
               msg="提醒：GitHub 用户 ${GH_USER} 过去7天没有新的 push commit（北京时间周日08:00检查）。"
               echo "Sending webhook notification..."
-              # 4. 发送通知 (使用 --url 明确参数)
-              curl -sSf --url "$WECOM_WEBHOOK" -H 'Content-Type: application/json' \
-                -d "$(jq -n --arg m "$msg" '{msgtype:"text",text:{content:$m}}')"
+              # 4. 发送通知 (飞书格式)
+              curl -sSf --url "$FEISHU_WEBHOOK" -H 'Content-Type: application/json' \
+                -d "$(jq -n --arg m "$msg" '{msg_type:"text",content:{text:$m}}')"
               echo "$msg"
             else
               echo "OK：过去7天有 ${cnt} 次 PushEvent。"
