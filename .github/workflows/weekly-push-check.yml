@@ -1,0 +1,31 @@
+
+  name: Weekly Push Check
+
+  on:
+    schedule:
+      # 北京时间周日 08:00 = UTC 周日 00:00
+      - cron: "0 0 * * 0"
+    workflow_dispatch:
+
+  jobs:
+    check:
+      runs-on: ubuntu-latest
+      steps:
+        - name: Check push events in last 7 days
+          env:
+            GH_USER: rubbishbro
+            WECOM_WEBHOOK: ${{ secrets.WECOM_WEBHOOK }}
+          run: |
+            set -euo pipefail
+            cutoff=$(date -u -d '7 days ago' +%s)
+            events="$(curl -sSf -H 'Accept: application/vnd.github+json' "https://api.github.com/users/${GH_USER}/events/public?per_page=100")"
+            cnt="$(echo "$events" | jq --argjson cutoff "$cutoff" '[.[] |select(.type=="PushEvent") | .created_at | fromdateiso8601 | select(. > $cutoff)]length')"
+
+            if [ "$cnt" -eq 0 ]; then
+              msg="提醒：GitHub 用户 ${GH_USER} 过去7天没有新的 push commit（北京时间周日08:00检查）。"
+              curl -sSf "$WECOM_WEBHOOK" -H 'Content-Type: application/json' \
+                -d "$(jq -n --arg m "$msg" '{msgtype:"text",text:{content:$m}}')"
+              echo "$msg"
+            else
+              echo "OK：过去7天有 ${cnt} 次 PushEvent。"
+            fi
