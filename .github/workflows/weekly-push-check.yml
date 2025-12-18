@@ -33,7 +33,7 @@
                exit 1
             fi
 
-            cutoff=$(date -u -d '7 days ago' +%s)
+            cutoff=$(date -u -d '1 minute ago' +%s)
             echo "Fetching events for user: ${GH_USER}"
             
             # 2. 获取 GitHub 事件
